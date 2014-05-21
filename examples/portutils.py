@@ -1,6 +1,6 @@
 
 from jnpr.junos.utils import Util
-
+from collections import defaultdict
 
 class PortUtils(Util):
 
@@ -149,3 +149,29 @@ class PortUtils(Util):
             return "There are %s neighbors on this port ..." % str(nei_count)
 
         return nei_mgmt[0].text.strip()
+
+    def get_lldpnei_desc(self, port=None):
+        """
+        Returns the LLDP neighbor port description for the given port 
+        or all ports if a port is not specified. Will return a list 
+        to accomodate multiple lldp neighbors on a port.
+
+        :port:
+          the name of the physical port, e.g. 'ge-0/0/0'
+        """
+
+        args = {}
+        if port is not None:
+            args['interface_name'] = port
+        rsp = self.rpc.get_lldp_interface_neighbors_information(**args)
+
+        localports = rsp.xpath('.//lldp-local-interface')
+        lldpnei_desc = defaultdict(list)
+
+        for port in localports:
+            nei = rsp.xpath(
+                './/lldp-remote-port-description[../lldp-local-interface/text() = "%s"]' % 
+                port.text)  
+            lldpnei_desc[port.text].append(nei[0].text.strip())
+
+        return lldpnei_desc      
